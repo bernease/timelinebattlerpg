@@ -1,0 +1,129 @@
+{
+	"characters": [
+		{
+			"era": "prehistoric",
+			"max_health": 500,
+			"weapon": "club",
+			"armor": "hide_armor",
+			"items": ["potion", "bomb"]
+
+		},
+		{
+			"era": "dungeon",
+			"max_health": 500,
+			"weapon": "sword",
+			"armor": "iron_shield",
+			"items": ["potion", "bomb"]
+		},
+		{
+			"era": "futuristic",
+			"max_health": 500,
+			"weapon": "laser",
+			"armor": "energy_barrier",
+			"items": ["potion", "bomb"]
+		}
+
+	],
+	"enemy": {
+		"max_health": 2000,
+		"attack": 100
+	},
+	"eras": ["prehistoric", "dungeon", "futuristic"],
+	"items": {
+		"club": {
+			"id": "club",
+			"name": "Club",
+			"type": "weapon",
+			"attack": 100
+		},
+		"sword": {
+			"id": "sword",
+			"name": "Sword",
+			"type": "weapon",
+			"attack": 150
+		},
+		"laser": {
+			"id": "laser",
+			"name": "Laser",
+			"type": "weapon",
+			"attack": 200
+		},
+		"hide_armor": {
+			"id": "hide_armor",
+			"name": "Hide Armor",
+			"type": "Armor",
+			"defense": 50
+		},
+		"iron_shield": {
+			"id": "iron_shield",
+			"name": "Iron Shield",
+			"type": "Armor",
+			"defense": 50
+		},
+		"energy_barrier": {
+			"id": "energy_barrier",
+			"name": "Energy Barrier",
+			"type": "Armor",
+			"defense": 50
+		},
+		"potion": {
+			"id": "potion",
+			"name": "Potion",
+			"type": "usable",
+			"effect": {
+				"type": "heal",
+				"power": 200
+			}
+		},
+		"bomb": {
+			"id": "bomb",
+			"name": "Bomb",
+			"type": "usable",
+			"effect": {
+				"type": "attack",
+				"power": 250
+			}
+		}
+	},
+	"max_inventory_size": 6,
+	"max_turns": 4,
+	"turns": [
+		{
+			"player0": {"type": "attack"},
+			"player1": {"type": "attack"},
+			"player2": {"type": "defend"},
+			"enemy": {"type": "attack"}
+		},
+		{
+			"player0": {
+				"type": "trade",
+				"trade_type": "swap armor",
+				"target": 1
+			},
+			"player1": {"type": "defend"},
+			"player2": {"type": "attack"},
+			"enemy": {"type": "boost"}
+		},
+		{
+			"player0": {"type": "defend"},
+			"player1": {
+				"type": "trade",
+				"trade_type": "give item",
+				"item_id": "potion",
+				"target": 0
+			},
+			"player2": {"type": "attack"},
+			"enemy": {"type": "attack"}
+		},
+		{
+			"player0": {
+				"type": "trade",
+				"trade_type": "swap weapon",
+				"target": 2
+			},
+			"player1": {"type": "attack"},
+			"player2": {"type": "attack"},
+			"enemy": {"type": "final_attack"}
+		}
+	]
+};
