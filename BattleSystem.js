@@ -8,17 +8,38 @@ class Timeline {
 
     /**
      * Initializes the static class. Must be called first for other methods to work.
-     *
-     * @todo Build timeline initial state from config file.
+	   * Must be called after Config class has been initialized.
      */
     static init() {
         Timeline.nodeList = [];
         /**@static @var {number} */
-        Timeline.maxNodeIndex = -1;
+        Timeline.maxNodeIndex = Config.getMaxTurns();
         /**@static @var {number} */
         Timeline.endNodeIndex = -1;
         /**@static @var {number} */
         Timeline.currentNodeIndex = -1;
+
+        Timeline.initializeTimeline();
+
+    		// add a TimelineNode for each possible turn, repeating initial character & enemy snapshots
+    		for (var turn=0; turn<Config.getMaxTurns(); turn++) {
+    			let enemySnapshot = Config.getEnemyBaseData();
+    			let characterSnapshots = [];
+    			for (var char=0; char<Config.getNumCharacters(); char++) {
+    				characterSnapshots.push(Config.getCharacterBaseDataByIndex(char));
+    			}
+
+    			// @todo Change to use copy snapshots
+    			Timeline.nodeList.push(new TimelineNode(characterSnapshots,
+    													enemySnapshot,
+    													Config.getAllCharacterActionsForTurn(turn),
+    													Config.getEnemyActionsForTurn(turn)));
+    		}
+
+    		Timeline.endNodeIndex = Config.getMaxTurns()-1;
+
+    		// rebuild timeline from beginning
+    		Timeline.rebuildTimeline(0);
     }
 
     /**
@@ -89,24 +110,24 @@ class Timeline {
      * index, if appropraite).
      */
     static rebuildTimeline(nodeIndex) {
-        if (nodeIndex == timeLine.maxNodeIndex) return;
-        let node = Timeline.getNode(index);
+        if (nodeIndex == (Timeline.maxNodeIndex-1)) return;
+        const node = Timeline.getNode(nodeIndex);
         if (!node.isLive()) {
             this.endNodeIndex = Math.min(endNodeIndex, nodeIndex);
             return;
         }
-        let nextNode = Timeline.getNode(index + 1);
+        let nextNode = Timeline.getNode(nodeIndex + 1);
 
         // Copy current battle state to next node.
         nextNode.copy(node);
 
         // Apply player actions
-        let results = {
-            "playerActionsResults": [],
-            "enemyActionResult": undefined
+        var results = {
+            playerActionsResults: [],
+            enemyActionResult: undefined
         };
         for (let i = 0; i < Config.getNumCharacters(); i++) {
-            results.playerActionResults.push(
+            results.playerActionsResults.push(
                 ActionExecutor.applyAction(
                     node.characterActions[i],   // Action
                     nextNode,                   // Battle snapshot to apply action
@@ -117,7 +138,7 @@ class Timeline {
         }
 
         // Apply enemy action (if enemy is alive)
-        if (nextNode.enemy.isAlive()) {
+        if (nextNode.isEnemyAlive()) {
             results.enemyActionResult = ActionExecutor.applyAction(
                 node.enemyAction,   // Action
                 nextNode,           // Battle snapshot to apply action
@@ -125,6 +146,7 @@ class Timeline {
             );
         }
 
+		console.log("Recursively rebuilding timeline for node "+(nodeIndex+1));
         Timeline.rebuildTimeline(nodeIndex + 1);
     }
 
@@ -152,9 +174,14 @@ class BattleSnapshot {
         /**@var {CharacterSnapshot[]}*/
         this.characterSnapshotArray = characterSnapshots;
         this.characterSnapshotMap = {};
-        this.forEachCharacter(function(character) {
+
+		for (let i=0; i < Config.getNumCharacters(); i++) {
+			this.characterSnapshotMap[Config.getEraByIndex(i)] = characterSnapshots[i];
+		}
+        /* REMOVED DUE TO EXCEPTIONS
+		this.forEachCharacter(function(character) {
             this.characterSnapshotMap[character.era] = character;
-        });
+        });*/
     }
 
     /**
@@ -192,9 +219,13 @@ class BattleSnapshot {
      * @return {boolean}
      */
     anyCharacterAlive() {
-        this.forEachCharacter(function(characterSnapshot) {
+		for (let i=0; i < Config.getNumCharacters(); i++) {
+			if (this.characterSnapshotArray[i].isAlive()) return true;
+		}
+        /* REMOVED DUE TO EXCEPTIONS
+		this.forEachCharacter(function(characterSnapshot) {
             if (characterSnapshot.isAlive()) return true;
-        });
+        });*/
         return false;
     }
 
@@ -245,7 +276,7 @@ class BattleSnapshot {
     copy(snapshot) {
         this.enemySnapshot.copy(snapshot.enemySnapshot);
         for (let i = 0; i < this.characterSnapshotArray.length; i++) {
-            this.characterSnapshotArray[i].copy(snapshot.characterSnapshotArrray[i]);
+            this.characterSnapshotArray[i].copy(snapshot.characterSnapshotArray[i]);
         }
     }
 
@@ -279,7 +310,6 @@ class TimelineNode extends BattleSnapshot {
         /**@var {Object}*/
         this.enemyAction = enemyAction
     }
-
 }
 
 /**
@@ -320,7 +350,7 @@ class BattlerSnapshot {
      * @return {boolean}
      */
     hasStatus(statusId) {
-        return this.status.contains(statusId);
+        return this.status.indexOf(statusId) !== -1;
     }
 
     /**
@@ -329,7 +359,7 @@ class BattlerSnapshot {
      */
     addStatus(statusId) {
         if (!this.hasStatus(statusId)) {
-            this.status.add(statusId);
+            this.status.push(statusId);
         }
     }
 
@@ -383,7 +413,7 @@ class CharacterSnapshot extends BattlerSnapshot {
      * @param {string[]} items
      */
     constructor(era, maxHealth, weapon, armor, items) {
-        super(maxHealth, true);
+        super(maxHealth, false);
         /**@var {string} */
         this.era = era + "";
         /**@var {string} */
@@ -420,7 +450,7 @@ class EnemySnapshot extends BattlerSnapshot {
      * @param {number} maxHealth
      */
     constructor(maxHealth) {
-        super(maxHealth, false);
+        super(maxHealth, true);
     }
 
 }
@@ -570,11 +600,11 @@ class ActionExecutor {
         this.isPlayerAction = isPlayerAction;
         this.userIndex = userIndex;
         this.result = {
-            "executed": false,
-            "description": "",
-            "metadata": {},
-            "isPlayerAction": isPlayerAction,
-            "actionData": actionData
+            executed: false,
+            description: "",
+            metadata: {},
+            isPlayerAction: isPlayerAction,
+            actionData: actionData
         }
     }
 
@@ -607,12 +637,12 @@ class ActionExecutor {
         return actionExecutor.result;
     }
 
-    result(executed, description, metadata = {}) {
+    setResult(executed, description, metadata) {
         this.result.executed = executed;
         this.result.description = description;
-        this.result.metadata = metadata;
+        this.result.metadata = metadata || {};
         if (this.isPlayerAction) {
-            result.userIndex = this.userIndex;
+            this.result.userIndex = this.userIndex;
         }
     }
 
@@ -626,25 +656,25 @@ class ActionExecutor {
 
     applyPlayerAction() {
         if (this.userIndex == -1) {
-            this.result(
+            this.setResult(
                 false,
                 "Attempting to execute player action for invalid player index."
             );
         }
         this.user = this.battleSnapshot.getCharacterSnapshotByIndex(this.userIndex);
         if (!this.user.isAlive()) {
-            this.result(false, "Character is not alive to act.");
+            this.setResult(false, "Character is not alive to act.");
         }
         if (this.user.hasStatus(PLAYER_STATUS_EFFECT.STUNNED)) {
-            this.result(false, "Character is stunned.");
+            this.setResult(false, "Character is stunned.");
         }
         switch (this.actionData.type) {
-            case PLAYER_ACTION.PLAYER_ATTACK: this.applyPlayerAttack(); break;
+            case PLAYER_ACTION.ATTACK: this.applyPlayerAttack(); break;
             case PLAYER_ACTION.DEFEND: this.applyPlayerDefend(); break;
             case PLAYER_ACTION.TRADE: this.applyPlayerTrade(); break;
             case PLAYER_ACTION.USE_ITEM: this.applyPlayerUseItem(); break;
             default:
-                this.result(
+                this.setResult(
                     false,
                     "Attempting to execute player action with invalid action type."
                 );
@@ -658,7 +688,7 @@ class ActionExecutor {
             case ENEMY_ACTION.STUN: this.applyEnemyStun(); break;
             case ENEMY_ACTION.FINAL_ATTACK:this. applyEnemyFinalAction(); break;
             default:
-                this.result(
+                this.setResult(
                     false,
                     "Attempting to execute enemy action with invalid action type."
                 );
@@ -668,8 +698,8 @@ class ActionExecutor {
     applyPlayerAttack() {
         let weapon = Config.getItemData(this.user.weapon);
         let rawDamage = weapon.attack;
-        let actualDamage = applyHealthChangeToEnemy(-rawDamage);
-        return this.result(
+        let actualDamage = this.applyHealthChangeToEnemy(-rawDamage);
+        return this.setResult(
             true,
             `${this.user.era} attacks enemy with ${weapon.name} and deals ${rawDamage} damage`,
             {
@@ -682,7 +712,7 @@ class ActionExecutor {
 
     applyPlayerDefend() {
         this.user.addStatus(PLAYER_STATUS_EFFECT.DEFENDING);
-        this.result(true, `${this.user.era} is now defending.`);
+        this.setResult(true, `${this.user.era} is now defending.`);
     }
 
     /**
@@ -697,16 +727,16 @@ class ActionExecutor {
 
     applyEnemyAttack() {
         let damage = Config.getEnemyAttackPower();
-        if (this.battleSnapshot.enemy.hasStatus(ENEMY_STATUS_EFFECT.BOOSTED)) {
+        if (this.battleSnapshot.enemySnapshot.hasStatus(ENEMY_STATUS_EFFECT.BOOSTED)) {
             damage *= 2;
-            this.battleSnapshot.enemy.removeStatus(ENEMY_STATUS_EFFECT.BOOSTED);
+            this.battleSnapshot.enemySnapshot.removeStatus(ENEMY_STATUS_EFFECT.BOOSTED);
         }
         let actualDamage;
         let actualDamageText;
         if (this.actionData.target !== undefined) {
             let target = this.battleSnapshot.getCharacterSnapshotByIndex(this.actionData.target);
             if (!target.isAlive()) {
-                this.result(false, "Enemy target is already dead");
+                this.setResult(false, "Enemy target is already dead");
                 return;
             }
             actualDamage = this.applyHealthChangeToPlayer(-damage, this.actionData.target);
@@ -718,7 +748,7 @@ class ActionExecutor {
             }
             actualDamageText = actualDamage.join(", ");
         }
-        this.result(
+        this.setResult(
             true,
             `enemy attacks players, deals ${actualDamageText} damage`,
             {
@@ -729,8 +759,8 @@ class ActionExecutor {
     }
 
     applyEnemyBoost() {
-        this.battleSnapshot.enemy.addStatus(ENEMY_STATUS_EFFECT.BOOSTED);
-        this.result(true, "enemy is now boosted");
+        this.battleSnapshot.enemySnapshot.addStatus(ENEMY_STATUS_EFFECT.BOOSTED);
+        this.setResult(true, "enemy is now boosted");
     }
 
     /**
@@ -742,7 +772,7 @@ class ActionExecutor {
         for (let i = 0; i < Config.getNumCharacters(); i++) {
             this.applyHealthChangeToPlayer(-9999999, i);
         }
-        this.result(true, `enemy wipes the party`);
+        this.setResult(true, `enemy wipes the party`);
     }
 
     applyHealthChangeToPlayer(change, targetIndex) {

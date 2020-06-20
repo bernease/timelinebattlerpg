@@ -88,7 +88,7 @@ class Config {
      * should always be 3.
      */
     static getNumCharacters() {
-        return Config.characters.length;
+        return Config.config.characters.length;
     }
 
     /**
@@ -131,4 +131,24 @@ class Config {
     static getEnemyMaxHealth() {
         return Config.config.enemy.max_health;
     }
+
+	/**
+	 * @method
+	 * @return {Array} Array of character action objects
+	 */
+	 static getAllCharacterActionsForTurn(turnIndex) {
+		const actions = [];
+		for (var i=0; i < Config.getNumCharacters(); i++) {
+			actions.push(Config.config.turns[turnIndex]["player"+i]);
+		}
+		return actions;
+	 }
+
+	 /**
+ 	 * @method
+ 	 * @return {Object} Enemy action object
+ 	 */
+	 static getEnemyActionsForTurn(turnIndex) {
+	 	return Config.config.turns[turnIndex].enemy;
+	 }
 }
