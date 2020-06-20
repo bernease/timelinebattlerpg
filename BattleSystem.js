@@ -19,8 +19,6 @@ class Timeline {
         /**@static @var {number} */
         Timeline.currentNodeIndex = -1;
 
-        Timeline.initializeTimeline();
-
     		// add a TimelineNode for each possible turn, repeating initial character & enemy snapshots
     		for (var turn=0; turn<Config.getMaxTurns(); turn++) {
     			let enemySnapshot = Config.getEnemyBaseData();
