@@ -71,8 +71,18 @@
 			"name": "Potion",
 			"type": "usable",
 			"effect": {
-				"type": "heal",
-				"power": 200
+				"target_type": "ally",
+				"heal": 200
+			}
+		},
+		"smelling_salts": {
+			"id": "smelling_salts",
+			"name": "Smelling Salts",
+			"type": "usable",
+			"effect": {
+				"target_type": "ally",
+				"remove_status": ["stun"],
+				"heal": 100
 			}
 		},
 		"bomb": {
@@ -80,8 +90,18 @@
 			"name": "Bomb",
 			"type": "usable",
 			"effect": {
-				"type": "attack",
-				"power": 250
+				"target_type": "enemy",
+				"damage": 250
+			}
+		},
+		"taser": {
+			"id": "taser",
+			"name": "Taser",
+			"type": "usable",
+			"effect": {
+				"target_type": "enemy",
+				"apply_status": ["stun"],
+				"damage": 100
 			}
 		}
 	},

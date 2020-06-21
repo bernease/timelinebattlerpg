@@ -119,13 +119,9 @@ class Timeline {
         // Copy current battle state to next node.
         nextNode.copy(node);
 
-        // Apply player actions
-        var results = {
-            playerActionsResults: [],
-            enemyActionResult: undefined
-        };
+        node.characterActionResults = [];
         for (let i = 0; i < Config.getNumCharacters(); i++) {
-            results.playerActionsResults.push(
+            node.characterActionResults.push(
                 ActionExecutor.applyAction(
                     node.characterActions[i],   // Action
                     nextNode,                   // Battle snapshot to apply action
@@ -137,12 +133,18 @@ class Timeline {
 
         // Apply enemy action (if enemy is alive)
         if (nextNode.isEnemyAlive()) {
-            results.enemyActionResult = ActionExecutor.applyAction(
+            node.enemyActionResult = ActionExecutor.applyAction(
                 node.enemyAction,   // Action
                 nextNode,           // Battle snapshot to apply action
                 false               // Is player action
             );
         }
+
+        // Defending does not persist past the turn.
+        for (let i = 0; i < Config.getNumCharacters(); i++){
+            let character = nextNode.getCharacterSnapshotByIndex(i);
+            character.removeStatus(PLAYER_STATUS_EFFECT.DEFENDING);
+        };
 
 		console.log("Recursively rebuilding timeline for node "+(nodeIndex+1));
         Timeline.rebuildTimeline(nodeIndex + 1);
@@ -304,9 +306,11 @@ class TimelineNode extends BattleSnapshot {
     ) {
         super(characterSnapshots, enemySnapshot);
         /**@var {Object[]}*/
-        this.characterActions = characterActions,
+        this.characterActions = characterActions;
         /**@var {Object}*/
-        this.enemyAction = enemyAction
+        this.enemyAction = enemyAction;
+        this.characterActionResults = [];
+        this.enemyActionResult = true;
     }
 }
 
@@ -422,6 +426,22 @@ class CharacterSnapshot extends BattlerSnapshot {
         this.inventory = items.slice();
     }
 
+    hasItem(itemId) {
+        return this.inventory.contains(itemId);
+    }
+
+    removeItem(itemId) {
+        this.inventory.remove(itemId);
+    }
+
+    giveItem(itemId) {
+        this.inventory.add(itemId);
+    }
+
+    numItems() {
+        return this.inventory.length;
+    }
+
     /**
      * @method
      * @param {CharacterSnapshot}
@@ -519,11 +539,11 @@ class ActionBuilder {
 
     /**
      * @method
-     * @param {string} item_id
-     * @param {number} targetIndex  (Can be omitted)
+     * @param {string} itemId
+     * @param {number} targetIndex (can be omitted if targeting enemy)
      * @return {Object}
      */
-    static useItemAction(itemId, targetIndex=-1) {
+    static useItemAction(itemId, targetIndex) {
         let actionData = {
             "type": PLAYER_ACTION.USE_ITEM,
             "item_id": itemId
@@ -664,7 +684,9 @@ class ActionExecutor {
             this.setResult(false, "Character is not alive to act.");
         }
         if (this.user.hasStatus(PLAYER_STATUS_EFFECT.STUNNED)) {
+            this.user.removeStatus(PLAYER_STATUS_EFFECT.STUNNED);
             this.setResult(false, "Character is stunned.");
+
         }
         switch (this.actionData.type) {
             case PLAYER_ACTION.ATTACK: this.applyPlayerAttack(); break;
@@ -680,6 +702,13 @@ class ActionExecutor {
     }
 
     applyEnemyAction() {
+        if (this.battleSnapshot.enemy.hasStatus(ENEMY_STATUS_EFFECT.STUNNED)) {
+            this.battleSnapshot.enemy.removeStatus(ENEMY_STATUS_EFFECT.STUNNED);
+            this.setResult(
+                false,
+                "Enemy is stunned"
+            );
+        }
         switch(this.actionData.type) {
             case ENEMY_ACTION.ATTACK: this.applyEnemyAttack(); break;
             case ENEMY_ACTION.BOOST: this.applyEnemyBoost(); break;
@@ -713,15 +742,155 @@ class ActionExecutor {
         this.setResult(true, `${this.user.era} is now defending.`);
     }
 
-    /**
-     * @todo Implement trading
-     */
-    applyPlayerTrade() {}
+    applyPlayerTrade() {
+        if (this.userIndex == this.actionData.target) {
+            this.setResult(
+                false,
+                "Invalid trade; cannot trade item with self",
+            );
+            return;
+        }
+        this.target = this.battleSnapshot.getCharacterSnapshotByIndex(this.actionData.target);
+        if (!this.target.isAlive()) {
+            this.setResult(
+                false,
+                "Invalid trade; cannot trade item with KO'd character"
+            );
+        }
+        switch (this.actionData.trade_type) {
+            case TRADE_TYPE.SWAP_WEAPON:
+                this.applyWeaponSwap();
+                break;
+            case TRADE_TYPE.SWAP_ARMOR:
+                this.applyArmorSwap();
+                break;
+            case TRATE_TYPE.SWAP_ITEM:
+                this.applyItemSwap();
+                break;
+        }
+    }
 
-    /**
-     * @todo Implement items
-     */
-    applyPlayerUseItem() {}
+    applyWeaponSwap() {
+        let weapon1 = this.user.weapon;
+        let weapon2 = this.target.weapon;
+        this.user.armor = weapon2;
+        this.target.armor = weapon1;
+        this.setResult(
+            true,
+            `${this.user.era} and ${this.target.era} swap weapons`,
+            {
+                "givenArmor": weapon1,
+                "takenArmor": weapon2
+            }
+        );
+    }
+
+    applyArmorSwap() {
+        let armor1 = this.user.armor;
+        let armor2 = this.target.armor;
+        this.user.armor = armor2;
+        this.target.armor = armor1;
+        this.setResult(
+            true,
+            `${this.user.era} and ${this.target.era} swap armor`,
+            {
+                "givenArmor": armor1,
+                "takenArmor": armor2
+            }
+        );
+    }
+
+    applyItemSwap() {
+        let itemId = this.actionData.item_id;
+        if (!this.user.hasItem(itemId)) {
+            this.setResult(
+                false,
+                "Invalid trade; character does not have item",
+                {
+                    "itemId": itemId
+                }
+            );
+            return;
+        }
+        if (target.numItems() >= Config.getMaxInventorySize()) {
+            this.setResult(
+                false,
+                "Invalid trade; target's inventory is full"
+            );
+            return;
+        }
+        this.user.removeItem(itemId);
+        this.target.giveItem(itemId);
+        this.setResult(
+            true,
+            `${this.user.era} gives ${itemId} to ${this.target.era}`,
+            {
+                "itemId": itemId
+            }
+        );
+    }
+
+    applyPlayerUseItem() {
+        let itemId = this.actionData.item_id;
+        let item = Config.getItemData(itemId);
+        let target;
+        if (item.target_type == TARGET_TYPE.ENEMY) {
+            target = this.battleSnapshot.enemy;
+        } else if (item.target_type == TARGET_TYPE.ALLY) {
+            if (this.actionData.target === undefined) {
+                this.setResult(
+                    false,
+                    `Attempting to use item ${itemId} without a target`,
+                    {
+                        "itemId": itemId
+                    }
+                );
+                return;
+            }
+            target = this.battleSnapshot.getCharacterSnapshotByIndex(this.actionData.target);
+        }
+        if (!target.isAlive()) {
+            this.setResult(
+                false,
+                `Cannot use item on KO'd target`,
+                {
+                    "itemId": itemId
+                }
+            );
+            return;
+        }
+        let resultMetadata = {
+            "itemId": itemId,
+        };
+        if (item.damage !== undefined) {
+            resultMetadata.damage = applyHealthChange(-item.damage, target);
+        } else if (item.heal !== undefined) {
+            resultMetadata.heal = applyHealthChange(item.heal, target);
+        }
+        if (item.apply_status !== undefined) {
+            resultMetadata.statusApplied = [];
+            item.apply_status.forEach(function(status) {
+                if (!target.hasStatus(status)) {
+                    target.addStatus(status);
+                    resultMetaData.statusApplied.push(status);
+                }
+            });
+        }
+        if (item.remove_status !== undefiend) {
+            resultMetaData.statusRemoved = [];
+            item.remove_status.forEach(function(status) {
+                if (target.hasStatus(status)) {
+                    target.removeStatus(status);
+                    resultMetaData.statusRemoved.push(status);
+                }
+            });
+        }
+        setResult(
+            true,
+            `${this.user.era} used ${itemId}`,
+            resultMetaData
+        );
+    }
 
     applyEnemyAttack() {
         let damage = Config.getEnemyAttackPower();
@@ -761,10 +930,23 @@ class ActionExecutor {
         this.setResult(true, "enemy is now boosted");
     }
 
-    /**
-     * @todo Implement enemy stun attack
-     */
-    applyEnemyStun() {}
+    applyEnemyStun() {
+        if (this.actionData.target !== undefined) {
+            let target = this.battleSnapshot.getCharacterSnapshotByIndex(this.actionData.target);
+            if (!target.isAlive()) {
+                this.setResult(false, "Enemy target is already dead.");
+                return;
+            }
+            target.addStatus(PLAYER_STATUS_EFFECT.STUNNED);
+            this.setResult(true, `${target.era} is stunned`);
+        } else {
+            for (let i = 0; i < Config.getNumCharacters(); i++) {
+                let character = this.battleSnapshot.getCharacterSnapshotByIndex(i);
+                if (character.isAlive()) character.addStatus(PLAYER_STATUS_EFFECT.STUNNED);
+            }
+            this.setResult(true, "Enemy stuns all players");
+        }
+    }
 
     applyEnemyFinalAction() {
         for (let i = 0; i < Config.getNumCharacters(); i++) {

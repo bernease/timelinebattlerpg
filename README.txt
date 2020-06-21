@@ -40,3 +40,18 @@ Individual actions executions produce result objects, but there's no mechanism t
 available to the rest of the game.
 -Check in on the "end" node through Timeline.getEndNode() and see if the player has won
 -Either advance to the end node or advance to the next node based on the result
+
+
+Expected item detail JSON, for reference:
+{
+    "id": string
+    "name":  string,
+    "type" "weapon" or "armor" or "usable",
+    "effect": {
+	"target_type": "ally" or "enemy",
+	"damage": int (optional)
+	"heal": int (optional)
+	apply_status: string[] (optional)
+	remove_status: string[] (optional)
+    }
+}
