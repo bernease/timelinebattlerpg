@@ -39,5 +39,11 @@ const PLAYER_STATUS_EFFECT = {
  * @enum Status effects which are applied to the enemy.
  */
 const ENEMY_STATUS_EFFECT = {
-	BOOSTED: "boosted"
+	BOOSTED: "boosted",
+	STUNNED: "stunned"
 };
+
+const TARGET_TYPE = {
+	ALLY: "ally",
+	ENEMY: "enemy"
+}
