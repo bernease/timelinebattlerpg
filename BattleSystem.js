@@ -702,8 +702,8 @@ class ActionExecutor {
     }
 
     applyEnemyAction() {
-        if (this.battleSnapshot.enemy.hasStatus(ENEMY_STATUS_EFFECT.STUNNED)) {
-            this.battleSnapshot.enemy.removeStatus(ENEMY_STATUS_EFFECT.STUNNED);
+        if (this.battleSnapshot.enemySnapshot.hasStatus(ENEMY_STATUS_EFFECT.STUNNED)) {
+            this.battleSnapshot.enemySnapshot.removeStatus(ENEMY_STATUS_EFFECT.STUNNED);
             this.setResult(
                 false,
                 "Enemy is stunned"
@@ -764,7 +764,7 @@ class ActionExecutor {
             case TRADE_TYPE.SWAP_ARMOR:
                 this.applyArmorSwap();
                 break;
-            case TRATE_TYPE.SWAP_ITEM:
+            case TRADE_TYPE.SWAP_ITEM:
                 this.applyItemSwap();
                 break;
         }
