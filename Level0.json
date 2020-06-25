@@ -4,23 +4,23 @@
 			"era": "prehistoric",
 			"max_health": 500,
 			"weapon": "club",
-			"armor": "hide_armor",
-			"items": ["potion", "bomb"]
+			"armor": "furs",
+			"items": ["salve", "smelling_salts"]
 
 		},
 		{
 			"era": "dungeon",
 			"max_health": 500,
 			"weapon": "sword",
-			"armor": "iron_shield",
-			"items": ["potion", "bomb"]
+			"armor": "robe",
+			"items": ["curse"]
 		},
 		{
 			"era": "futuristic",
 			"max_health": 500,
 			"weapon": "laser",
-			"armor": "energy_barrier",
-			"items": ["potion", "bomb"]
+			"armor": "force_field",
+			"items": ["adrenaline"]
 		}
 
 	],
@@ -48,27 +48,27 @@
 			"type": "weapon",
 			"attack": 200
 		},
-		"hide_armor": {
-			"id": "hide_armor",
-			"name": "Hide Armor",
-			"type": "Armor",
+		"furs": {
+			"id": "furs",
+			"name": "Furs",
+			"type": "armor",
 			"defense": 50
 		},
-		"iron_shield": {
-			"id": "iron_shield",
-			"name": "Iron Shield",
-			"type": "Armor",
+		"robe": {
+			"id": "robe",
+			"name": "Lucky Robe",
+			"type": "armor",
 			"defense": 50
 		},
-		"energy_barrier": {
-			"id": "energy_barrier",
-			"name": "Energy Barrier",
-			"type": "Armor",
+		"force_field": {
+			"id": "force_field",
+			"name": "Force Field",
+			"type": "armor",
 			"defense": 50
 		},
-		"potion": {
-			"id": "potion",
-			"name": "Potion",
+		"salve": {
+			"id": "salve",
+			"name": "Healing Salve",
 			"type": "usable",
 			"effect": {
 				"target_type": "ally",
@@ -85,18 +85,18 @@
 				"heal": 100
 			}
 		},
-		"bomb": {
-			"id": "bomb",
-			"name": "Bomb",
+		"adrenaline": {
+			"id": "adrenaline",
+			"name": "Adrenaline shot",
 			"type": "usable",
 			"effect": {
 				"target_type": "enemy",
 				"damage": 250
 			}
 		},
-		"taser": {
-			"id": "taser",
-			"name": "Taser",
+		"curse": {
+			"id": "curse",
+			"name": "Curse",
 			"type": "usable",
 			"effect": {
 				"target_type": "enemy",
@@ -129,7 +129,7 @@
 			"player1": {
 				"type": "trade",
 				"trade_type": "give item",
-				"item_id": "potion",
+				"item_id": "curse",
 				"target": 0
 			},
 			"player2": {"type": "attack"},

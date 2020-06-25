@@ -19,7 +19,10 @@ class Config {
      * @method Validates the configuration JSON supplied to {@link Config.init}.
      * @todo Validation code
      */
-    static validate() {}
+    static validate() {
+		console.log("Console is validating...");
+		console.log(Config.config);
+	}
 
     /**
      * @method
@@ -134,7 +137,7 @@ class Config {
 
 	/**
 	 * @method
-	 * @return {Array} Array of character action objects
+	 * @return {}
 	 */
 	 static getAllCharacterActionsForTurn(turnIndex) {
 		const actions = [];
@@ -144,10 +147,6 @@ class Config {
 		return actions;
 	 }
 
-	 /**
- 	 * @method
- 	 * @return {Object} Enemy action object
- 	 */
 	 static getEnemyActionsForTurn(turnIndex) {
 	 	return Config.config.turns[turnIndex].enemy;
 	 }

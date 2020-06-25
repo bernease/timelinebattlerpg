@@ -284,7 +284,7 @@ class BattleSnapshot {
 
 /**
  * @class Represents a single node in the {@link Timeline}. A battle snapshot which additionally
- * keeps track of actions. Node that actions are not copied when applying
+ * keeps track of actions. Note that actions are not copied when applying
  * {@link BattleSnapshot#copy}.
  * @extends BattleSnapshot
  */
@@ -543,12 +543,12 @@ class ActionBuilder {
      * @param {number} targetIndex (can be omitted if targeting enemy)
      * @return {Object}
      */
-    static useItemAction(itemId, targetIndex) {
+    static useItemAction(itemId, targetIndex=-1) {
         let actionData = {
             "type": PLAYER_ACTION.USE_ITEM,
             "item_id": itemId
         };
-        if (target != -1) {
+        if (targetIndex != -1) {
             actionData.target = targetIndex;
         }
         return actionData;
@@ -561,7 +561,7 @@ class ActionBuilder {
      */
     static enemyAttackAction(targetIndex=-1) {
         let actionData = { "type": ENEMY_ACTION.ATTACK };
-        if (target != -1) {
+        if (targetIndex != -1) {
             actionData.target = targetIndex;
         }
         return actionData;

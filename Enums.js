@@ -46,4 +46,15 @@ const ENEMY_STATUS_EFFECT = {
 const TARGET_TYPE = {
 	ALLY: "ally",
 	ENEMY: "enemy"
-}
+};
+
+const ITEM_TYPE = {
+	WEAPON: "weapon",
+	ARMOR: "armor",
+	USABLE: "usable"
+};
+
+const ITEM_TARGET_TYPE = {
+	ALLY: "ally",
+	ENEMY: "enemy"
+};
