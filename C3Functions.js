@@ -132,7 +132,7 @@ class WindowCharPortraitInstance extends ISpriteInstance
 
 	getCharacterIndex() {
 		// same as position
-		this.instVars.pos;
+		return this.instVars.pos;
 	}
 }
 
@@ -142,27 +142,47 @@ class UIBattleWindow
 		console.log("setting up UI for battle window...");
 
 		UIBattleWindow.selectors = [];
-		UIBattleWindow.actionsSelected = [];
+		UIBattleWindow.actionsSelected;
+		UIBattleWindow.resetActionsSelected();
 		UIBattleWindow.buttonsSelected = [];
-		for (var i=0; i<Config.getNumCharacters(); i++) {
-			UIBattleWindow.actionsSelected[i] = null;
-		}
 		UIBattleWindow.optionalSelectors = [];
 
 		UIBattleWindow.shieldSprite;
 		UIBattleWindow.currentNode;
 		UIBattleWindow.currentPos;
+		UIBattleWindow.invReceive = [];
+		UIBattleWindow.charReceive = [];
+		UIBattleWindow.dirReceive = [];
 
 		UIBattleWindow.validInventoryObjects;
 		UIBattleWindow.validCharacterObjects;
 	}
 
+	static resetActionsSelected() {
+		UIBattleWindow.actionsSelected = [];
+		for (var i=0; i<Config.getNumCharacters(); i++) {
+			UIBattleWindow.actionsSelected[i] = null;
+		}
+	}
+
 	static refreshWindow(runtime) {
-		UIBattleWindow.refreshAllHPAndStatus(runtime);
+		UIBattleWindow.refreshAfterAction(runtime);
+		// in addition to others
+		UIBattleWindow.resetActionsSelected();
+
+		UIBattleWindow.refreshAllInventory(runtime);
 		UIBattleWindow.clearNodeShieldSelection(runtime);
 		UIBattleWindow.clearAllSelectors(runtime);
+	}
+
+	static refreshAfterAction(runtime) {
+		UIBattleWindow.refreshAllHPAndStatus(runtime);
 		UIBattleWindow.clearFinishButton(runtime);
-		UIBattleWindow.hideOptionalSelectors(runtime);
+
+		UIBattleWindow.buttonsSelected = [];
+		UIBattleWindow.currentPos = -1;
+		UIBattleWindow.validInventoryObjects = [];
+		UIBattleWindow.validCharacterObjects = [];
 	}
 
 	static createSelectors(runtime) {
@@ -185,6 +205,35 @@ class UIBattleWindow
 		}
 	}
 
+	static locateActionReceiveItems(runtime) {
+		// store inventory receive locations
+		let allButtons = runtime.objects.InventoryItem.getAllInstances();
+		for (var i in allButtons) {
+			if (allButtons[i].instVars.node == UIBattleWindow.currentNode &&
+					allButtons[i].instVars.actionReceive == true) {
+				UIBattleWindow.invReceive[allButtons[i].instVars.pos] = allButtons[i];
+			}
+		}
+
+		// store character receive locations
+		allButtons = runtime.objects.WindowCharPortrait.getAllInstances();
+		for (var i in allButtons) {
+			if (allButtons[i].instVars.node == UIBattleWindow.currentNode &&
+					allButtons[i].instVars.actionReceive == true) {
+				UIBattleWindow.charReceive[allButtons[i].instVars.pos] = allButtons[i];
+			}
+		}
+
+		// store direction receive locations
+		allButtons = runtime.objects.TradeIconSprite.getAllInstances();
+		for (var i in allButtons) {
+			if (allButtons[i].instVars.node == UIBattleWindow.currentNode &&
+					allButtons[i].instVars.actionReceive == true) {
+				UIBattleWindow.dirReceive[allButtons[i].instVars.pos] = allButtons[i];
+			}
+		}
+	}
+
 	static validButtonSelected(runtime, button, node, pos, buttonType) {
 
 		// remove optional selectors if added
@@ -198,7 +247,7 @@ class UIBattleWindow
 		UIBattleWindow.selectors[pos][buttonType].y = button.y;
 
 		// check if action is complete
-		const action = UIBattleWindow.createAction(pos);
+		const action = UIBattleWindow.createAction(runtime);
 		if (action) {
 			UIBattleWindow.actionsSelected[pos] = action;
 		}
@@ -258,7 +307,6 @@ class UIBattleWindow
 
 		UIBattleWindow.chooseValidCharacterObjects(runtime);
 		UIBattleWindow.showOptionalCharacterSelectors(runtime);
-		//@todo Set image of traded items in actionReceive slot
 	}
 
 	static characterButtonSelected(runtime, buttonUid) {
@@ -276,12 +324,29 @@ class UIBattleWindow
 
 		UIBattleWindow.validButtonSelected(runtime, selectedButton, selectedButton.instVars.node,
 				UIBattleWindow.buttonsSelected[0].instVars.pos, "character");
-
-		//@todo Set image of used traded targets in actionReceive slot
 	}
 
 	static getSelectionLevel() {
 		return UIBattleWindow.buttonsSelected.length;
+	}
+
+	static setInvTradeReceive(runtime) {
+		UIBattleWindow.invReceive[UIBattleWindow.currentPos].setAnimation(
+				UIBattleWindow.buttonsSelected[1].getItemId(), "beginning");
+	}
+
+	static setCharTradeReceive(runtime, animation) {
+		let animationName;
+		if (animation) {
+			animationName = animation;
+		} else {
+			animationName = Config.getEraByIndex(UIBattleWindow.buttonsSelected[2].getCharacterIndex());
+		}
+		UIBattleWindow.charReceive[UIBattleWindow.currentPos].setAnimation(animationName, "beginning");
+	}
+
+	static setDirTradeReceive(runtime, direction) {
+		UIBattleWindow.dirReceive[UIBattleWindow.currentPos].setAnimation(direction, "beginning");
 	}
 
 	static hideOptionalSelectors() {
@@ -302,7 +367,7 @@ class UIBattleWindow
 		}
 	}
 
-	static showOptionalCharacterSelectors(runtime) {2
+	static showOptionalCharacterSelectors(runtime) {
 		for (var i in UIBattleWindow.validCharacterObjects) {
 			let selector = runtime.objects.WindowCharacterSelectorSprite.createInstance(
 					"gWindowUpperUI",
@@ -349,13 +414,12 @@ class UIBattleWindow
 		// inventory selectors
 		if (UIBattleWindow.getSelectionLevel() != 2) { return; }
 
-		if (UIBattleWindow.buttonsSelected[1].getItemTargetType() == ITEM_TARGET_TYPE.ALLY) {
+		if (UIBattleWindow.buttonsSelected[0].getPlayerAction() == PLAYER_ACTION.TRADE ||
+				UIBattleWindow.buttonsSelected[0].getPlayerAction() == PLAYER_ACTION.USE_ITEM &&
+				UIBattleWindow.buttonsSelected[1].getItemTargetType() == ITEM_TARGET_TYPE.ALLY) {
 			// setup optional selector buttons
 			let allButtons = runtime.objects.WindowCharPortrait.getAllInstances();
 			for (var i in allButtons) {
-				allButtons[i].instVars.actionReceive == false;
-				allButtons[i].instVars.node == UIBattleWindow.currentNode;
-				allButtons[i].instVars.pos == UIBattleWindow.currentPos;
 				if (allButtons[i].instVars.actionReceive == false &&
 						allButtons[i].instVars.node == UIBattleWindow.currentNode) {
 					//@todo: cleanup complex logic, possibly merge with BattleSystem
@@ -366,7 +430,7 @@ class UIBattleWindow
 		UIBattleWindow.validCharacterObjects = selectableButtons;
 	}
 
-	static createAction() {
+	static createAction(runtime) {
 		var selectionLevel = UIBattleWindow.getSelectionLevel();
 
 		if (selectionLevel < 1) {
@@ -378,8 +442,10 @@ class UIBattleWindow
 
 		switch (actionType) {
 			case PLAYER_ACTION.ATTACK:
+				UIBattleWindow.refreshAfterAction(runtime);
 				return ActionBuilder.attackAction();
 			case PLAYER_ACTION.DEFEND:
+				UIBattleWindow.refreshAfterAction(runtime);
 				return ActionBuilder.defendAction();
 			default:
 				// pass, continues on to inventory
@@ -396,6 +462,9 @@ class UIBattleWindow
 
 		if (actionType == PLAYER_ACTION.USE_ITEM && itemTargetType == ITEM_TARGET_TYPE.ENEMY) {
 			// use action, but enemy target so no character selection needed
+			UIBattleWindow.setInvTradeReceive(runtime);
+			UIBattleWindow.setCharTradeReceive(runtime, "enemy");
+			UIBattleWindow.refreshAfterAction(runtime);
 			return ActionBuilder.useItemAction(itemType);
 		}
 
@@ -408,10 +477,22 @@ class UIBattleWindow
 
 		switch (itemType) {
 			case ITEM_TYPE.WEAPON:
+				UIBattleWindow.setInvTradeReceive(runtime);
+				UIBattleWindow.setCharTradeReceive(runtime);
+				UIBattleWindow.setDirTradeReceive(runtime, "bidirectional");
+				UIBattleWindow.refreshAfterAction(runtime);
 				return ActionBuilder.tradeActionWeaponSwap(target);
 			case ITEM_TYPE.ARMOR:
+				UIBattleWindow.setInvTradeReceive(runtime);
+				UIBattleWindow.setCharTradeReceive(runtime);
+				UIBattleWindow.setDirTradeReceive(runtime, "bidirectional");
+				UIBattleWindow.refreshAfterAction(runtime);
 				return ActionBuilder.tradeActionArmorSwap(target);
 			case ITEM_TYPE.USABLE:
+				UIBattleWindow.setInvTradeReceive(runtime);
+				UIBattleWindow.setCharTradeReceive(runtime);
+				UIBattleWindow.setDirTradeReceive(runtime, "unidirectional");
+				UIBattleWindow.refreshAfterAction(runtime);
 				return ActionBuilder.tradeActionGiveItem(target, itemId);
 			default:
 				return null;
@@ -434,6 +515,8 @@ class UIBattleWindow
 		runtime.globalVars.windowActiveNode = nodeShield.instVars.node;
 		Timeline.currentNodeIndex = nodeShield.instVars.node;
 		UIBattleWindow.currentNode = nodeShield.instVars.node;
+
+		UIBattleWindow.locateActionReceiveItems(runtime);
 	}
 
 	static clearNodeShieldSelection(runtime) {
@@ -501,6 +584,34 @@ class UIBattleWindow
 		runtime.objects.WindowSelectButton.getFirstInstance().x = -400;
 	}
 
+	static refreshAllInventory(runtime) {
+		const inventoryItems = runtime.objects.InventoryItem.getAllInstances();
+		for (var i in inventoryItems) {
+			if (inventoryItems[i].instVars.actionReceive) {
+				inventoryItems[i].setAnimation("empty");
+				continue;
+			}
+
+			inventoryItems[i].setAnimationFromPosition();
+		}
+
+		const charPortraits = runtime.objects.WindowCharPortrait.getAllInstances();
+		for (i in charPortraits) {
+			if (charPortraits[i].instVars.actionReceive) {
+				charPortraits[i].setAnimation("empty");
+				continue;
+			}
+		}
+
+		const dirReceives = runtime.objects.TradeIconSprite.getAllInstances();
+		for (i in dirReceives) {
+			if (dirReceives[i].instVars.actionReceive) {
+				dirReceives[i].setAnimation("empty");
+				continue;
+			}
+		}
+	}
+
 	static refreshAllHPAndStatus(runtime) {
 		console.log("refreshing UI for health and status...");
 		const charHealthTexts = runtime.objects.HeroHealthText.getAllInstances();
@@ -543,33 +654,16 @@ class UIBattleWindow
 		const charInfoTexts = runtime.objects.HeroInfoText.getAllInstances();
 		for (var i in charInfoTexts) {
 			let charAction = Timeline.getNode(charInfoTexts[i].instVars.node)
-					.characterActions[charInfoTexts[i].instVars.pos];
-			charInfoTexts[i].text = String(charAction.type);
+					.characterActions[charInfoTexts[i].instVars.pos].type;
+			charInfoTexts[i].text = String(charAction);
 		}
 
 		const enemyActionTexts = runtime.objects.EnemyActionText.getAllInstances();
 		for (i in enemyActionTexts) {
-			let enemyAction = Timeline.getNode(enemyActionTexts[i].instVars.node).enemyAction.type;
+			let enemyAction = Timeline.getNode(enemyActionTexts[i].instVars.node)
+					.enemyAction.type;
 
-			enemyActionTexts[i].text = enemyAction;
-		}
-
-		const inventoryItems = runtime.objects.InventoryItem.getAllInstances();
-		for (i in inventoryItems) {
-			if (inventoryItems[i].instVars.actionReceive) {
-				inventoryItems[i].setAnimation("empty");
-				continue;
-			}
-
-			inventoryItems[i].setAnimationFromPosition();
-		}
-
-		const charPortraits = runtime.objects.WindowCharPortrait.getAllInstances();
-		for (i in charPortraits) {
-			if (charPortraits[i].instVars.actionReceive) {
-				charPortraits[i].setAnimation("empty");
-				continue;
-			}
+			enemyActionTexts[i].text = String(enemyAction);
 		}
 	}
 }
