@@ -1,12 +1,11 @@
 {
 	"characters": [
 		{
-			"era": "prehistoric",
+			"era": "futuristic",
 			"max_health": 500,
-			"weapon": "club",
-			"armor": "furs",
-			"items": ["salve", "smelling_salts"]
-
+			"weapon": "laser",
+			"armor": "force_field",
+			"items": ["adrenaline"]
 		},
 		{
 			"era": "dungeon",
@@ -16,19 +15,19 @@
 			"items": ["curse"]
 		},
 		{
-			"era": "futuristic",
+			"era": "prehistoric",
 			"max_health": 500,
-			"weapon": "laser",
-			"armor": "force_field",
-			"items": ["adrenaline"]
-		}
+			"weapon": "club",
+			"armor": "furs",
+			"items": ["salve", "smelling_salts"]
 
+		}
 	],
 	"enemy": {
 		"max_health": 2000,
 		"attack": 100
 	},
-	"eras": ["prehistoric", "dungeon", "futuristic"],
+	"eras": ["futuristic", "prehistoric", "dungeon"],
 	"items": {
 		"club": {
 			"id": "club",
@@ -109,40 +108,40 @@
 	"max_turns": 4,
 	"turns": [
 		{
-			"player0": {"type": "attack"},
+			"player2": {"type": "attack"},
 			"player1": {"type": "attack"},
-			"player2": {"type": "defend"},
+			"player0": {"type": "defend"},
 			"enemy": {"type": "attack"}
 		},
 		{
-			"player0": {
+			"player2": {
 				"type": "trade",
 				"trade_type": "swap armor",
 				"target": 1
 			},
 			"player1": {"type": "defend"},
-			"player2": {"type": "attack"},
+			"player0": {"type": "attack"},
 			"enemy": {"type": "boost"}
 		},
 		{
-			"player0": {"type": "defend"},
+			"player2": {"type": "defend"},
 			"player1": {
 				"type": "trade",
 				"trade_type": "give item",
 				"item_id": "curse",
 				"target": 0
 			},
-			"player2": {"type": "attack"},
+			"player0": {"type": "attack"},
 			"enemy": {"type": "attack"}
 		},
 		{
-			"player0": {
+			"player2": {
 				"type": "trade",
 				"trade_type": "swap weapon",
 				"target": 2
 			},
 			"player1": {"type": "attack"},
-			"player2": {"type": "attack"},
+			"player0": {"type": "attack"},
 			"enemy": {"type": "final_attack"}
 		}
 	]
